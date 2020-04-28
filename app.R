@@ -18,6 +18,7 @@ library(dplyr)
 library(xml2)
 library(XML)
 library(htmltools)
+library(rlist)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
@@ -33,7 +34,7 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
           textInput("suchName",label="Wortanfang Gattung Art"),
           actionButton("taxSuche","Trefferliste"),
           br(),br(),
-          selectizeInput("artWahl","Trefferauswahl",choices=""),
+          selectizeInput("artWahl","Trefferauswahl",choices=setNames(80,"Adonis vernalis")),
           br(),hr(),
           actionButton("distMap","Atlas Verbreitung"),
           actionButton("gbifMap","GBIF Daten"),
@@ -49,7 +50,7 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
       ) # tabsetpanel
     ), # sidebarpanel  
     mainPanel(
-      textInput("taxName",""),textOutput("afrecs"),textOutput("gbifrecs"),
+      textOutput("atlasrecs"),textOutput("gbifrecs"),textOutput("afrecs"),
       withSpinner(leafletOutput("myMap",height = 550)))
   ) # sidebarlayout
 ) # fluidpage
@@ -62,7 +63,7 @@ server <- function(input, output, session) {
 #             resolutions = 2^(13:-1), # 8192 down to 0.5
 #             origin = c(0, 0)
 #  )
-# Initiale Kartenausgabe
+# initialize map output
   output$myMap <- renderLeaflet(leaflet() %>% 
     setView(lng=10,lat=51.2, zoom = 6) %>% addTiles(group = "OSM") %>%
     addProviderTiles(providers$OpenTopoMap, group = "Topo") %>%
@@ -80,30 +81,17 @@ server <- function(input, output, session) {
                 layers = "Nationalparke",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7)) %>%
     addLayersControl(
-      baseGroups = c("OSM", "Topo", "ESRI Sat"))
-  )
+      baseGroups = c("OSM", "Topo", "ESRI Sat"),
+      overlayGroups = c("PNV","NSG","NP"),
+      options = layersControlOptions(collapsed = TRUE))
+    )
 
-# Proxy für Änderungen in der Kartenausgabe
+# map-proxy for changing map-content witout redrawing the complete map
   proxy <- leafletProxy("myMap")
 
-# Observer für Kartenlayer
-  observe({
-    if (input$cb_pnv) 
-      {proxy %>% showGroup("PNV")}
-    else  
-      {proxy %>% hideGroup("PNV")}
-    if (input$cb_nsg) 
-    {proxy %>% showGroup("NSG")}
-    else  
-    {proxy %>% hideGroup("NSG")}
-    if (input$cb_np) 
-    {proxy %>% showGroup("NP")}
-    else  
-    {proxy %>% hideGroup("NP")}
-  })
-
-# Reaktive Funktion für die Namenssuche
-  erNamen <- eventReactive(input$taxSuche,{
+# reactive functions 
+# search names according genus and species nameparts
+  er_Namen <- eventReactive(input$taxSuche,{
     sn <- str_split(input$suchName," ",simplify = TRUE)
     if (nchar(sn[1])<=2)
     {print("Bitte mindesten 3 Gattungsbuchstaben")}
@@ -114,86 +102,84 @@ server <- function(input, output, session) {
       setNames(df_namen$taxonId,df_namen$latName)
     }
   })
-  observeEvent(erNamen(),{
-    updateSelectizeInput(session,"artWahl",choices = erNamen())
+  # retrieve and process data from florkart database (bfn)
+  er_Florkart <- eventReactive(input$distMap,{
+    df <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/atlas_json.xsql?suchnr=",input$artWahl,"&grid=quad"),simplifyDataFrame = TRUE)
+#    updateTextInput(session,inputId = "taxName",value = df$taxname)
+    numPoints <- length(df$records$lat)-1 # json-Ausgabe der records hat immer einen n/a am Ende
+    output$atlasrecs <- renderText(paste0("Fertig: ",as.character(numPoints)," Atlas MTB-Quaranten"))
+    if (numPoints >= 1){updateCheckboxInput(session,"cb_florkart",value = TRUE)} 
+    SpatialPointsDataFrame(cbind(as.double(df$records$lon[1:numPoints]),
+                                 as.double(df$records$lat[1:numPoints])),
+                           data.frame(zeit=df$records$zeitraum[1:numPoints],
+                                      rad=df$records$radius[1:numPoints]-500,
+                                      plabel=paste("FloraWeb Atlaspunkt",
+                                                   "<em>TK25-Quadrant: </em>",df$records$gridcode[1:numPoints],
+                                                   "<br/><em>Nachweiszeitraum: </em>",df$records$zeitraum_text[1:numPoints],
+                                                   "<br/><em>Status: </em>",df$records$status[1:numPoints])))
   })
-  # Button-Klick zur Verbreitungs-Kartenausgabe
-  observeEvent(input$distMap, {
-      df <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/atlas_json.xsql?suchnr=",input$artWahl,"&grid=quad"),simplifyDataFrame = TRUE)
-      updateTextInput(session,inputId = "taxName",value = df$taxname)
-      numPoints <- length(df$records$lat)-1 # json-Ausgabe der records hat immer einen n/a am Ende
-      updateCheckboxInput(session,"cb_florkart",value = FALSE)
-      updateCheckboxInput(session,"cb_gbif",value = FALSE)
-      updateCheckboxInput(session,"cb_artenfinder",value = FALSE)
-      if (numPoints >= 1){updateCheckboxInput(session,"cb_florkart",value = TRUE)} 
-      dist_sp <- SpatialPointsDataFrame(cbind(as.double(df$records$lon[1:numPoints]),
-                                              as.double(df$records$lat[1:numPoints])),
-                      data.frame(zeit=df$records$zeitraum[1:numPoints],
-                                 
-                                 rad=df$records$radius[1:numPoints]-500,
-                                 plabel=paste("FloraWeb Atlaspunkt",
-                                              "<em>TK25-Quadrant: </em>",df$records$gridcode[1:numPoints],
-                                              "<br/><em>Nachweiszeitraum: </em>",df$records$zeitraum_text[1:numPoints],
-                                              "<br/><em>Status: </em>",df$records$status[1:numPoints])))
-      pal <- colorNumeric(c("red", "yellow", "green"), domain = c(1,2,3))
-      proxy %>% clearGroup("AF") %>% clearGroup("GBIF") %>% clearGroup("FlorKart") %>% addCircles(data=dist_sp,group="FlorKart",color=~pal(zeit),stroke = FALSE, fillOpacity = 0.7,
-                                           popup=~plabel,radius=~rad)
-  })
-  observeEvent(input$gbifMap, {
-    proxy %>% clearGroup("GBIF") %>% clearGroup("AF")
-    gf <- occ_search(scientificName = input$taxName, country = "DE", hasCoordinate = TRUE, return = "data", limit = 10000, 
-            fields = c("decimalLongitude","decimalLatitude","institutionCode","locality","verbatimLocality",
-                       "coordinateUncertaintyInMeters","month","year","occurrenceID","references"))
+  # retrieve and process data from GBIF
+  er_Gbif <- eventReactive(input$gbifMap,{
+    df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxonbyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
+    sname <- URLencode(df_name$records$sciName)
+    gf <- occ_search(scientificName = sname, country = "DE", hasCoordinate = TRUE, return = "data", limit = 10000, 
+                     fields = c("decimalLongitude","decimalLatitude","institutionCode","locality","verbatimLocality",
+                                "coordinateUncertaintyInMeters","month","year","occurrenceID","references"))
     gf <- filter(gf, gf$institutionCode != "BfN")
     output$gbifrecs <- renderText(paste0("Fertig: ",as.character(length(gf$decimalLatitude))," GBIF-Beobachtungen"))
     if (length(gf$decimalLatitude) >= 1) {updateCheckboxInput(session,"cb_gbif", value = TRUE)}
-    gf1 <- filter(gf, ! is.na(gf$occurrenceID)) # in occurenceID sind links auf die Originalseiten
-    if (length(gf1$decimalLatitude) >= 1)
-    {gf1_sp <- SpatialPointsDataFrame(cbind(as.double(gf1$decimalLongitude),as.double(gf1$decimalLatitude)),
-                      data.frame(gLabel=paste0('<em>Institution: </em>',gf1$institutionCode,
-                                 '<br/><em>Fundort: </em>',paste0(gf1$locality,gf1$verbatimLocality),
-                                 '<br/><em>Unschärferadius: </em>',gf1$coordinateUncertaintyInMeters,
-                                 '<br/><em>Datum: </em>',gf1$month,"/",gf1$year,
-                                 '<br/><a href="',gf1$occurrenceID,'" target="_blank">publizierter Nachweis</a>')))
-        proxy %>% addCircleMarkers(data = gf1_sp,group="GBIF",popup = ~gLabel)
-      }      
-      gf2 <- filter(gf, is.na(gf$occurrenceID))
-      if (length(gf1$decimalLatitude) >= 1)
-      {
-        gf2_sp <- SpatialPointsDataFrame(cbind(as.double(gf2$decimalLongitude),
-                                              as.double(gf2$decimalLatitude)),
-                            data.frame(gLabel=paste0('<em>Institution: </em>',gf2$institutionCode,
-                                        '<br/><em>Fundort: </em>',paste0(gf2$locality,gf2$verbatimLocality),
-                                        '<br/><em>Unschärferadius: </em>',gf2$coordinateUncertaintyInMeters,
-                                        '<br/><em>Datum: </em>',gf2$month,"/",gf2$year)))
-        proxy %>% addCircleMarkers(data = gf2_sp,group="GBIF",popup = ~gLabel)# %>% withSpinner()
-      }
+    SpatialPointsDataFrame(cbind(as.double(gf$decimalLongitude),as.double(gf$decimalLatitude)),
+                           data.frame(gLabel=ifelse(is.na(gf$occurrenceID),
+                                                    paste0('<em>Institution: </em>',gf$institutionCode,
+                                                           '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
+                                                           '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
+                                                           '<br/><em>Datum: </em>',gf$month,"/",gf$year),
+                                                    paste0('<em>Institution: </em>',gf$institutionCode,
+                                                           '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
+                                                           '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
+                                                           '<br/><em>Datum: </em>',gf$month,"/",gf$year,
+                                                           '<br/><a href="',gf$occurrenceID,'" target="_blank">publizierter Nachweis</a>'))))
   })
-  observeEvent(input$afMap, {
-      af_url <- paste0("https://artenfinder.rlp.de/api/v2/sichtbeobachtungen?format=xml&restrict=id,lat,lon,datum,bemerkung,foto&titel_wissenschaftlich=",URLencode(input$taxName))
-      af_xml <- read_xml(af_url)
-      af_xmldoc <- xmlInternalTreeParse(af_xml,encoding = "utf-8")
-      af_df <- xmlToDataFrame(nodes = getNodeSet(af_xmldoc,"//xml/result/row"),stringsAsFactors=FALSE)
-      output$afrecs <- renderText(paste0("Fertig: ",as.character(length(af_df$lat))," Artenfinder-Beobachtungen"))
-      if (length(af_df$lat) >= 1){
-        updateCheckboxInput(session,"cb_artenfinder", value = TRUE)
-        af_sp <- SpatialPointsDataFrame(cbind(as.double(af_df$lon),as.double(af_df$lat)),
-                        proj4string = CRS("+init=epsg:25832"),
-                        data.frame(afLabel=ifelse(is.na(af_df$foto),
-                                                  paste0("<em>Artenfinder Beobachtung<br/>Datum: </em>",af_df$datum,
-                                                  "<br/><em>Bemerkung: </em>",af_df$bemerkung,
-                                                  "<br/>kein Foto"),
-                                                  paste0("<em>Artenfinder Beobachtung<br/>Datum: </em>",af_df$datum,
-                                                  "<br/><em>Bemerkung: </em>",af_df$bemerkung,
-                                                  "<br/><a href='",af_df$foto,"' target='_blank'>Fotolink</a>")
-                                                  )
-                                   ))
-        af_sp_ll <- spTransform(af_sp,CRS("+proj=longlat +datum=WGS84 +no_defs"))
-#        browser()
-        proxy %>% addCircleMarkers(data = af_sp_ll, group = "AF", popup = ~afLabel, color = "purple")
-        }
+# retrieve and process data from Artenfinder
+  er_Artenfinder <- eventReactive(input$afMap,{
+    df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxonbyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
+    sname <- URLencode(df_name$records$sciName)
+    af_url <- paste0("https://artenfinder.rlp.de/api/v2/sichtbeobachtungen?format=xml&restrict=id,lat,lon,datum,bemerkung,foto&titel_wissenschaftlich=",sname)
+    af_xml <- read_xml(af_url)
+    af_xmldoc <- xmlInternalTreeParse(af_xml,encoding = "utf-8")
+    af_df <- xmlToDataFrame(nodes = getNodeSet(af_xmldoc,"//xml/result/row"),stringsAsFactors=FALSE)
+    output$afrecs <- renderText(paste0("Fertig: ",as.character(length(af_df$lat))," Artenfinder-Beobachtungen"))
+    if (length(af_df$lat) >= 1){
+      updateCheckboxInput(session,"cb_artenfinder", value = TRUE)
+      af_sp <- SpatialPointsDataFrame(cbind(as.double(af_df$lon),as.double(af_df$lat)),
+                                      proj4string = CRS("+init=epsg:25832"),
+                                      data.frame(afLabel=ifelse(is.na(af_df$foto),
+                                                                paste0("<em>Artenfinder Beobachtung<br/>Datum: </em>",af_df$datum,
+                                                                       "<br/><em>Bemerkung: </em>",af_df$bemerkung,
+                                                                       "<br/>kein Foto"),
+                                                                paste0("<em>Artenfinder Beobachtung<br/>Datum: </em>",af_df$datum,
+                                                                       "<br/><em>Bemerkung: </em>",af_df$bemerkung,
+                                                                       "<br/><a href='",af_df$foto,"' target='_blank'>Fotolink</a>"))))
+      spTransform(af_sp,CRS("+proj=longlat +datum=WGS84 +no_defs"))
+    }
   })
-# Observer für Verbreitungsdaten checkboxen
+# observers
+# checking checkboxes for map overlays
+  observe({
+    if (input$cb_pnv) 
+    {proxy %>% showGroup("PNV")}
+    else  
+    {proxy %>% hideGroup("PNV")}
+    if (input$cb_nsg) 
+    {proxy %>% showGroup("NSG")}
+    else  
+    {proxy %>% hideGroup("NSG")}
+    if (input$cb_np) 
+    {proxy %>% showGroup("NP")}
+    else  
+    {proxy %>% hideGroup("NP")}
+  })
+# checking checkboxes for distribution data overlays
   observe({
     if (input$cb_florkart)
     {proxy %>% showGroup("FlorKart")}
@@ -204,6 +190,36 @@ server <- function(input, output, session) {
     if (input$cb_artenfinder)
     {proxy %>% showGroup("AF")}
     else {proxy %>% hideGroup("AF")}
+  })
+# event observer for selectize box: clear distribution overlays, when selected species changes
+  observeEvent(input$artWahl,{
+    output$atlasrecs <- renderText("Atlas Quadranten...")
+    output$gbifrecs <- renderText("GBIF Beobachtungen...")
+    output$afrecs <- renderText("Artenfinder Beobachtungen...")
+    proxy %>% clearGroup("AF") %>% clearGroup("GBIF") %>% clearGroup("FlorKart")
+  })
+# event observers for buttonclick reactive functions
+# fill selectize box with new hits from namesearch and clear distribution overlays
+  observeEvent(er_Namen(),{
+    updateSelectizeInput(session,"artWahl",choices = er_Namen())
+    updateCheckboxInput(session,"cb_florkart",value = FALSE)
+    updateCheckboxInput(session,"cb_gbif",value = FALSE)
+    updateCheckboxInput(session,"cb_artenfinder",value = FALSE)
+    proxy %>% clearGroup("AF") %>% clearGroup("GBIF") %>% clearGroup("FlorKart")
+  })
+# show Florkart distribution data
+  observeEvent(er_Florkart(), {
+    pal <- colorNumeric(c("red", "yellow", "green"), domain = c(1,2,3))
+    proxy %>% addCircles(data=er_Florkart(),group="FlorKart",color=~pal(zeit),stroke = FALSE, fillOpacity = 0.7,
+                                           popup=~plabel,radius=~rad)
+  })
+# show GBIF distribution data (takes some minutes...)
+  observeEvent(er_Gbif(), {
+      proxy %>% addCircleMarkers(data = er_Gbif(),group="GBIF",popup = ~gLabel)
+  })
+# show Artenfinder distribution data  
+  observeEvent(er_Artenfinder(), {
+        proxy %>% addCircleMarkers(data = er_Artenfinder(), group = "AF", popup = ~afLabel, color = "purple")
   })
 }
 # Run the application 
