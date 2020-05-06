@@ -8,8 +8,10 @@
 #
 
 library(shiny)
-library(shinycssloaders)
+#library(shinycssloaders)
+library(shinybusy)
 library(leaflet)
+library(leaflet.extras)
 library(jsonlite)
 library(rgbif)
 library(sp)
@@ -23,6 +25,8 @@ library(rlist)
 # Define UI for application that draws a histogram
 ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
                 tags$head(tags$style(HTML("hr {border-top: 1px solid #000000;}"))),
+  add_busy_bar(centered=TRUE, color = "#FF0000"),
+#  add_busy_spinner(spin="fading-circle",position = "bottom-right", margins = c(200,200)),                
 # Application title
   titlePanel(div(h1("FloraMap - Verbreitungsatlas und Beobachtungen"),align="center",style="color:darkgreen")),
 # sidebarlayout
@@ -44,14 +48,17 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
           checkboxInput("cb_gbif", label = "GBIF", value = FALSE),
           checkboxInput("cb_artenfinder", label = "Artenfinder", value = FALSE)),
         tabPanel(title = "Overlaykarten", value = "overlays",
-          checkboxInput("cb_pnv", label = "PNV", value = FALSE),
+          checkboxInput("cb_pnv", label = "Pot.Nat.Vegetation", value = FALSE),
           checkboxInput("cb_nsg", label = "Naturschutzgebiete", value = FALSE),
-          checkboxInput("cb_np", label = "Nationalparke", value = FALSE)) 
-      ) # tabsetpanel
+          checkboxInput("cb_np", label = "Nationalparke", value = FALSE), 
+          checkboxInput("cb_ffh", label = "FFH-Gebiete", value = FALSE),
+          checkboxInput("cb_bsr", label = "Biosphärenreservate", value = FALSE),
+          checkboxInput("cb_rgl", label = "Naturräume", value = FALSE)) 
+    ) # tabsetpanel
     ), # sidebarpanel  
     mainPanel(
       textOutput("atlasrecs"),textOutput("gbifrecs"),textOutput("afrecs"),
-      withSpinner(leafletOutput("myMap",height = 550)))
+      leafletOutput("myMap",height = 550))
   ) # sidebarlayout
 ) # fluidpage
 
@@ -71,19 +78,40 @@ server <- function(input, output, session) {
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/pnv500?",
                 group="PNV",
                 layers = c("Vegetationsgebiete","PNV500"),
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7)) %>%
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="NSG",
                 layers = "Naturschutzgebiete",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7)) %>%
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="NP",
                 layers = "Nationalparke",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7)) %>%
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
+    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
+                group="FFH",
+                layers = "Fauna_Flora_Habitat_Gebiete",
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
+                group="BSR",
+                layers = "Biosphaerenreservate",
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/gliederungen?",
+                group="RGL",
+                layers = "Naturraeume",
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+#    addWMSLegend(uri="http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Naturschutzgebiete&",
+#                 position = "bottomright",layerId = "leg_nsg") %>%
     addLayersControl(
       baseGroups = c("OSM", "Topo", "ESRI Sat"),
-      overlayGroups = c("PNV","NSG","NP"),
-      options = layersControlOptions(collapsed = TRUE))
+      overlayGroups = c("PNV","NSG","NP","FFH","BSR","RGL"),
+      options = layersControlOptions(collapsed = TRUE)) %>%
+    addResetMapButton()
     )
 
 # map-proxy for changing map-content witout redrawing the complete map
@@ -123,18 +151,18 @@ server <- function(input, output, session) {
     df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxonbyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
     sname <- URLencode(df_name$records$sciName)
     gf <- occ_search(scientificName = sname, country = "DE", hasCoordinate = TRUE, return = "data", limit = 10000, 
-                     fields = c("decimalLongitude","decimalLatitude","institutionCode","locality","verbatimLocality",
+                     fields = c("decimalLongitude","decimalLatitude","institutionCode","collectionCode","locality","verbatimLocality",
                                 "coordinateUncertaintyInMeters","month","year","occurrenceID","references"))
     gf <- filter(gf, gf$institutionCode != "BfN")
     output$gbifrecs <- renderText(paste0("Fertig: ",as.character(length(gf$decimalLatitude))," GBIF-Beobachtungen"))
     if (length(gf$decimalLatitude) >= 1) {updateCheckboxInput(session,"cb_gbif", value = TRUE)}
     SpatialPointsDataFrame(cbind(as.double(gf$decimalLongitude),as.double(gf$decimalLatitude)),
                            data.frame(gLabel=ifelse(is.na(gf$occurrenceID),
-                                                    paste0('<em>Institution: </em>',gf$institutionCode,
+                                                    paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
                                                            '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
                                                            '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
                                                            '<br/><em>Datum: </em>',gf$month,"/",gf$year),
-                                                    paste0('<em>Institution: </em>',gf$institutionCode,
+                                                    paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
                                                            '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
                                                            '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
                                                            '<br/><em>Datum: </em>',gf$month,"/",gf$year,
@@ -168,16 +196,22 @@ server <- function(input, output, session) {
   observe({
     if (input$cb_pnv) 
     {proxy %>% showGroup("PNV")}
-    else  
-    {proxy %>% hideGroup("PNV")}
+    else {proxy %>% hideGroup("PNV")}
     if (input$cb_nsg) 
     {proxy %>% showGroup("NSG")}
-    else  
-    {proxy %>% hideGroup("NSG")}
+    else {proxy %>% hideGroup("NSG")}
     if (input$cb_np) 
     {proxy %>% showGroup("NP")}
-    else  
-    {proxy %>% hideGroup("NP")}
+    else {proxy %>% hideGroup("NP")}
+    if (input$cb_ffh) 
+    {proxy %>% showGroup("FFH")}
+    else {proxy %>% hideGroup("FFH")}
+    if (input$cb_bsr) 
+    {proxy %>% showGroup("BSR")}
+    else {proxy %>% hideGroup("BSR")}
+    if (input$cb_rgl) 
+    {proxy %>% showGroup("RGL")}
+    else {proxy %>% hideGroup("RGL")}
   })
 # checking checkboxes for distribution data overlays
   observe({
