@@ -11,6 +11,7 @@ library(shiny)
 #library(shinycssloaders)
 library(shinybusy)
 library(leaflet)
+library(leaflet.extras)
 library(jsonlite)
 library(rgbif)
 library(sp)
@@ -47,10 +48,13 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
           checkboxInput("cb_gbif", label = "GBIF", value = FALSE),
           checkboxInput("cb_artenfinder", label = "Artenfinder", value = FALSE)),
         tabPanel(title = "Overlaykarten", value = "overlays",
-          checkboxInput("cb_pnv", label = "PNV", value = FALSE),
+          checkboxInput("cb_pnv", label = "Pot.Nat.Vegetation", value = FALSE),
           checkboxInput("cb_nsg", label = "Naturschutzgebiete", value = FALSE),
-          checkboxInput("cb_np", label = "Nationalparke", value = FALSE)) 
-      ) # tabsetpanel
+          checkboxInput("cb_np", label = "Nationalparke", value = FALSE), 
+          checkboxInput("cb_ffh", label = "FFH-Gebiete", value = FALSE),
+          checkboxInput("cb_bsr", label = "Biosphärenreservate", value = FALSE),
+          checkboxInput("cb_rgl", label = "Naturräume", value = FALSE)) 
+    ) # tabsetpanel
     ), # sidebarpanel  
     mainPanel(
       textOutput("atlasrecs"),textOutput("gbifrecs"),textOutput("afrecs"),
@@ -74,19 +78,40 @@ server <- function(input, output, session) {
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/pnv500?",
                 group="PNV",
                 layers = c("Vegetationsgebiete","PNV500"),
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7)) %>%
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="NSG",
                 layers = "Naturschutzgebiete",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7)) %>%
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="NP",
                 layers = "Nationalparke",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7)) %>%
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
+    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
+                group="FFH",
+                layers = "Fauna_Flora_Habitat_Gebiete",
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
+                group="BSR",
+                layers = "Biosphaerenreservate",
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/gliederungen?",
+                group="RGL",
+                layers = "Naturraeume",
+                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+#    addWMSLegend(uri="http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Naturschutzgebiete&",
+#                 position = "bottomright",layerId = "leg_nsg") %>%
     addLayersControl(
       baseGroups = c("OSM", "Topo", "ESRI Sat"),
-      overlayGroups = c("PNV","NSG","NP"),
-      options = layersControlOptions(collapsed = TRUE))
+      overlayGroups = c("PNV","NSG","NP","FFH","BSR","RGL"),
+      options = layersControlOptions(collapsed = TRUE)) %>%
+    addResetMapButton()
     )
 
 # map-proxy for changing map-content witout redrawing the complete map
@@ -171,16 +196,22 @@ server <- function(input, output, session) {
   observe({
     if (input$cb_pnv) 
     {proxy %>% showGroup("PNV")}
-    else  
-    {proxy %>% hideGroup("PNV")}
+    else {proxy %>% hideGroup("PNV")}
     if (input$cb_nsg) 
     {proxy %>% showGroup("NSG")}
-    else  
-    {proxy %>% hideGroup("NSG")}
+    else {proxy %>% hideGroup("NSG")}
     if (input$cb_np) 
     {proxy %>% showGroup("NP")}
-    else  
-    {proxy %>% hideGroup("NP")}
+    else {proxy %>% hideGroup("NP")}
+    if (input$cb_ffh) 
+    {proxy %>% showGroup("FFH")}
+    else {proxy %>% hideGroup("FFH")}
+    if (input$cb_bsr) 
+    {proxy %>% showGroup("BSR")}
+    else {proxy %>% hideGroup("BSR")}
+    if (input$cb_rgl) 
+    {proxy %>% showGroup("RGL")}
+    else {proxy %>% hideGroup("RGL")}
   })
 # checking checkboxes for distribution data overlays
   observe({
