@@ -9,4 +9,4 @@ The intended workflow is:
 * hit the button Atlas-Daten and see the distribution data fom the German Atlas (2013) on the map
 * hit the button "GBIF-Daten": if you have selected a common species you will have to wait a few minutes until the data from GBIF will appear on the map. This is due to the fact that the GBIF API always sends an XML-structure with all result fields which poduces large datasets of some Megabytes, consuming time an network capacities.
 * hit the button "Artenfinder-Daten" and see additional records from the Artenfnder API
-* activate overlay maps from geodatendienste of BfN like protected areas etc.
+* activate overlay maps from geodatendienste of BfN like protected areas, national parks etc.
