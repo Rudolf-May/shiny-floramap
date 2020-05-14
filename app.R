@@ -149,14 +149,19 @@ server <- function(input, output, session) {
   er_Gbif <- eventReactive(input$gbifMap,{
     df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxonbyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
     sname <- URLencode(df_name$records$sciName)
-    gf <- occ_search(scientificName = sname, country = "DE", hasCoordinate = TRUE, return = "data", limit = 10000, 
-                     fields = c("decimalLongitude","decimalLatitude","institutionCode","collectionCode","locality","verbatimLocality",
-                                "coordinateUncertaintyInMeters","month","year","occurrenceID","references"))
-    gf <- filter(gf, gf$institutionCode != "BfN")
+    gf <- occ_data(scientificName = sname, country="DE", hasCoordinate = TRUE, limit = 10000)
+#    gf <- occ_search(scientificName = sname, country = "DE", hasCoordinate = TRUE, return = "data", limit = 10000, 
+#                     fields = c("decimalLongitude","decimalLatitude","institutionCode","collectionCode","locality","verbatimLocality",
+#                                "coordinateUncertaintyInMeters","month","year","occurrenceID","references"))
+#    gf <- filter(gf, gf$institutionCode != "BfN")
+    gf <- gf$data
+    gf <- subset(gf, institutionCode != "BfN", 
+                 select = c("decimalLongitude","decimalLatitude","institutionCode","collectionCode","locality",
+                            "verbatimLocality","coordinateUncertaintyInMeters","month","year","occurrenceID"))
     output$gbifrecs <- renderText(paste0("Fertig: ",as.character(length(gf$decimalLatitude))," GBIF-Beobachtungen"))
     if (length(gf$decimalLatitude) >= 1) {
       updateCheckboxInput(session,"cb_gbif", value = TRUE)
-      if("occurenceId" %in% colnames(gf)){
+      if("occurrenceID" %in% colnames(gf)){
       SpatialPointsDataFrame(cbind(as.double(gf$decimalLongitude),as.double(gf$decimalLatitude)),
              data.frame(gLabel=ifelse(is.na(gf$occurrenceID),
                         paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
@@ -170,11 +175,15 @@ server <- function(input, output, session) {
                                '<br/><a href="',gf$occurrenceID,'" target="_blank">publizierter Nachweis</a>'))))
       } else {
         SpatialPointsDataFrame(cbind(as.double(gf$decimalLongitude),as.double(gf$decimalLatitude)),
-                               data.frame(gLabel=paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
-                                                 '<br/><em>Fundort: </em>',
-                                                 ifelse("verbatimLocality" %in% colnames(gf),paste0(gf$locality,"/",gf$verbatimLocality),gf$locality),
-                                                 '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
-                                                 '<br/><em>Datum: </em>',gf$month,"/",gf$year)))
+                               data.frame(gLabel=ifelse("verbatimLocality" %in% colnames(gf),
+                                                    paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
+                                                          '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
+                                                          '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
+                                                          '<br/><em>Datum: </em>',gf$month,"/",gf$year),
+                                                    paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
+                                                          '<br/><em>Fundort: </em>',gf$locality,
+                                                          '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
+                                                          '<br/><em>Datum: </em>',gf$month,"/",gf$year))))
       }
     }
   })
