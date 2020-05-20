@@ -53,8 +53,8 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
           checkboxInput("cb_nsg", label = "Naturschutzgebiete", value = FALSE),
           checkboxInput("cb_np", label = "Nationalparke", value = FALSE), 
           checkboxInput("cb_ffh", label = "FFH-Gebiete", value = FALSE),
-          checkboxInput("cb_bsr", label = "BiosphÃ¤renreservate", value = FALSE),
-          checkboxInput("cb_rgl", label = "NaturrÃ¤ume", value = FALSE)) 
+          checkboxInput("cb_bsr", label = "Biosphärenreservate", value = FALSE),
+          checkboxInput("cb_rgl", label = "Naturräume", value = FALSE)) 
     ) # tabsetpanel
     ), # sidebarpanel  
     mainPanel(
@@ -80,32 +80,32 @@ server <- function(input, output, session) {
                 group="PNV",
                 layers = c("Vegetationsgebiete","PNV500"),
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt fÃ¼r Naturschutz (BfN) 2015") %>%
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="NSG",
                 layers = "Naturschutzgebiete",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt fÃ¼r Naturschutz (BfN) 2015" ) %>%
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="NP",
                 layers = "Nationalparke",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt fÃ¼r Naturschutz (BfN) 2015") %>%
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="FFH",
                 layers = "Fauna_Flora_Habitat_Gebiete",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt fÃ¼r Naturschutz (BfN) 2015" ) %>%
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="BSR",
                 layers = "Biosphaerenreservate",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt fÃ¼r Naturschutz (BfN) 2015" ) %>%
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/gliederungen?",
                 group="RGL",
                 layers = "Naturraeume",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt fÃ¼r Naturschutz (BfN) 2015" ) %>%
+                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
     addLayersControl(
       baseGroups = c("OSM", "Topo", "ESRI Sat"),
 #      overlayGroups = c("PNV","NSG","NP","FFH","BSR","RGL"),
@@ -138,8 +138,8 @@ server <- function(input, output, session) {
     if (numPoints >= 1){updateCheckboxInput(session,"cb_florkart",value = TRUE)} 
     SpatialPointsDataFrame(cbind(as.double(df$records$lon[1:numPoints]),
                                  as.double(df$records$lat[1:numPoints])),
-                           data.frame(zeit=df$records$zeitraum[1:numPoints],
-                                      rad=df$records$radius[1:numPoints]-500,
+                           data.frame(zeit=df$records$zeitraum_text[1:numPoints],
+                                      rad=2700,
                                       plabel=paste("FloraWeb Atlaspunkt",
                                                    "<em>TK25-Quadrant: </em>",df$records$gridcode[1:numPoints],
                                                    "<br/><em>Nachweiszeitraum: </em>",df$records$zeitraum_text[1:numPoints],
@@ -166,11 +166,11 @@ server <- function(input, output, session) {
              data.frame(gLabel=ifelse(is.na(gf$occurrenceID),
                         paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
                                '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
-                               '<br/><em>UnschÃ¤rferadius: </em>',gf$coordinateUncertaintyInMeters,
+                               '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
                                '<br/><em>Datum: </em>',gf$month,"/",gf$year),
                         paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
                                '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
-                               '<br/><em>UnschÃ¤rferadius: </em>',gf$coordinateUncertaintyInMeters,
+                               '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
                                '<br/><em>Datum: </em>',gf$month,"/",gf$year,
                                '<br/><a href="',gf$occurrenceID,'" target="_blank">publizierter Nachweis</a>'))))
       } else {
@@ -178,11 +178,11 @@ server <- function(input, output, session) {
                                data.frame(gLabel=ifelse("verbatimLocality" %in% colnames(gf),
                                                     paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
                                                           '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
-                                                          '<br/><em>UnschÃ¤rferadius: </em>',gf$coordinateUncertaintyInMeters,
+                                                          '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
                                                           '<br/><em>Datum: </em>',gf$month,"/",gf$year),
                                                     paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
                                                           '<br/><em>Fundort: </em>',gf$locality,
-                                                          '<br/><em>UnschÃ¤rferadius: </em>',gf$coordinateUncertaintyInMeters,
+                                                          '<br/><em>Unschärferadius: </em>',gf$coordinateUncertaintyInMeters,
                                                           '<br/><em>Datum: </em>',gf$month,"/",gf$year))))
       }
     }
@@ -256,8 +256,12 @@ server <- function(input, output, session) {
 # checking checkboxes for distribution data overlays
   observe({
     if (input$cb_florkart)
-    {proxy %>% showGroup("FlorKart")}
-    else {proxy %>% hideGroup("FlorKart")}
+    {proxy %>% showGroup("FlorKart")
+      pal <- colorFactor(palette = c("yellow", "green","red"), domain = c("vor 1950","1950-1979","ab 1980"))
+      proxy %>% addLegend(position = "bottomleft",pal=pal, values = c("vor 1950","1950-1979","ab 1980"),
+                title = "Nachweiszeitraum", group = "FlorKart", layerId = "legFlorkart")
+    }
+    else {proxy %>% hideGroup("FlorKart") %>% removeControl("legFlorkart")}
     if (input$cb_gbif)
     {proxy %>% showGroup("GBIF")}
     else {proxy %>% hideGroup("GBIF")}
@@ -283,9 +287,13 @@ server <- function(input, output, session) {
   })
 # show Florkart distribution data
   observeEvent(er_Florkart(), {
-    pal <- colorNumeric(c("red", "yellow", "green"), domain = c(1,2,3))
-    proxy %>% addCircles(data=er_Florkart(),group="FlorKart",color=~pal(zeit),stroke = FALSE, fillOpacity = 0.7,
-                                           popup=~plabel,radius=~rad)
+# Achtung: die domain-Werte müssen mit den möglichen Werten in df$records$zeitraum_text übereinstimmen, 
+# die domain-Liste wird alphabetisch sortiert und in dieser Reihenfolge den Palette-Weren zugewiesen    
+    pal <- colorFactor(palette = c("yellow", "green","red"), domain = c("vor 1950","1950-1979","ab 1980"))
+    proxy %>% addCircles(data=er_Florkart(),group="FlorKart",color=~pal(zeit),stroke = FALSE, fillOpacity = 0.5,
+                                           popup=~plabel,radius=~rad) %>%
+              addLegend(position = "bottomleft",pal=pal, values = c("vor 1950","1950-1979","ab 1980"),
+                        title = "Nachweiszeitraum", group = "FlorKart", layerId = "legFlorkart")
   })
 # show GBIF distribution data (takes some minutes...)
   observeEvent(er_Gbif(), {
