@@ -53,8 +53,8 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
           checkboxInput("cb_nsg", label = "Naturschutzgebiete", value = FALSE),
           checkboxInput("cb_np", label = "Nationalparke", value = FALSE), 
           checkboxInput("cb_ffh", label = "FFH-Gebiete", value = FALSE),
-          checkboxInput("cb_bsr", label = "Biosph‰renreservate", value = FALSE),
-          checkboxInput("cb_rgl", label = "Naturr‰ume", value = FALSE)) 
+          checkboxInput("cb_bsr", label = "Biosph√§renreservate", value = FALSE),
+          checkboxInput("cb_rgl", label = "Naturr√§ume", value = FALSE)) 
     ) # tabsetpanel
     ), # sidebarpanel  
     mainPanel(
@@ -80,32 +80,32 @@ server <- function(input, output, session) {
                 group="PNV",
                 layers = c("Vegetationsgebiete","PNV500"),
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt f¸r Naturschutz (BfN) 2015") %>%
+                attribution = "Overlaykarten: (c) Bundesamt f√ºr Naturschutz (BfN) 2015") %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="NSG",
                 layers = "Naturschutzgebiete",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt f¸r Naturschutz (BfN) 2015" ) %>%
+                attribution = "Overlaykarten: (c) Bundesamt f√ºr Naturschutz (BfN) 2015" ) %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="NP",
                 layers = "Nationalparke",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt f¸r Naturschutz (BfN) 2015") %>%
+                attribution = "Overlaykarten: (c) Bundesamt f√ºr Naturschutz (BfN) 2015") %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="FFH",
                 layers = "Fauna_Flora_Habitat_Gebiete",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt f¸r Naturschutz (BfN) 2015" ) %>%
+                attribution = "Overlaykarten: (c) Bundesamt f√ºr Naturschutz (BfN) 2015" ) %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
                 group="BSR",
                 layers = "Biosphaerenreservate",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt f¸r Naturschutz (BfN) 2015" ) %>%
+                attribution = "Overlaykarten: (c) Bundesamt f√ºr Naturschutz (BfN) 2015" ) %>%
     addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/gliederungen?",
                 group="RGL",
                 layers = "Naturraeume",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt f¸r Naturschutz (BfN) 2015" ) %>%
+                attribution = "Overlaykarten: (c) Bundesamt f√ºr Naturschutz (BfN) 2015" ) %>%
     addLayersControl(
       baseGroups = c("OSM", "Topo", "ESRI Sat"),
 #      overlayGroups = c("PNV","NSG","NP","FFH","BSR","RGL"),
@@ -149,42 +149,42 @@ server <- function(input, output, session) {
   er_Gbif <- eventReactive(input$gbifMap,{
     df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxonbyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
     sname <- URLencode(df_name$records$sciName)
-    gf <- occ_data(scientificName = sname, country="DE", hasCoordinate = TRUE, limit = 10000)
-#    gf <- occ_search(scientificName = sname, country = "DE", hasCoordinate = TRUE, return = "data", limit = 10000, 
-#                     fields = c("decimalLongitude","decimalLatitude","institutionCode","collectionCode","locality","verbatimLocality",
-#                                "coordinateUncertaintyInMeters","month","year","occurrenceID","references"))
-#    gf <- filter(gf, gf$institutionCode != "BfN")
-    gf <- gf$data
-    gf <- subset(gf, institutionCode != "BfN", 
-                 select = c("decimalLongitude","decimalLatitude","institutionCode","collectionCode","locality",
-                            "verbatimLocality","coordinateUncertaintyInMeters","month","year","occurrenceID"))
-    output$gbifrecs <- renderText(paste0("Fertig: ",as.character(length(gf$decimalLatitude))," GBIF-Beobachtungen"))
+    gf <- subset(occ_data(scientificName = sname, country="DE", hasCoordinate = TRUE, limit = 10000)$data, 
+                 institutionCode != "BfN")
     if (length(gf$decimalLatitude) >= 1) {
+      output$gbifrecs <- renderText(paste0("Fertig: ",as.character(length(gf$decimalLatitude))," GBIF-Beobachtungen"))
       updateCheckboxInput(session,"cb_gbif", value = TRUE)
-      if("occurrenceID" %in% colnames(gf)){
+      if("occurrenceID" %in% colnames(gf) && "verbatimLocality" %in% colnames(gf)){
       SpatialPointsDataFrame(cbind(as.double(gf$decimalLongitude),as.double(gf$decimalLatitude)),
              data.frame(gLabel=ifelse(is.na(gf$occurrenceID),
                         paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
                                '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
-                               '<br/><em>Unsch‰rferadius: </em>',gf$coordinateUncertaintyInMeters,
+                               '<br/><em>Unsch√§rferadius: </em>',gf$coordinateUncertaintyInMeters,
                                '<br/><em>Datum: </em>',gf$month,"/",gf$year),
                         paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
                                '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
-                               '<br/><em>Unsch‰rferadius: </em>',gf$coordinateUncertaintyInMeters,
+                               '<br/><em>Unsch√§rferadius: </em>',gf$coordinateUncertaintyInMeters,
                                '<br/><em>Datum: </em>',gf$month,"/",gf$year,
                                '<br/><a href="',gf$occurrenceID,'" target="_blank">publizierter Nachweis</a>'))))
+      } else if ("occurrenceID" %in% colnames(gf)){
+        SpatialPointsDataFrame(cbind(as.double(gf$decimalLongitude),as.double(gf$decimalLatitude)),
+              data.frame(gLabel=ifelse(is.na(gf$occurrenceID),
+                         paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
+                                '<br/><em>Fundort: </em>',gf$locality,
+                                '<br/><em>Unsch√§rferadius: </em>',gf$coordinateUncertaintyInMeters,
+                                '<br/><em>Datum: </em>',gf$month,"/",gf$year),
+                         paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
+                                '<br/><em>Fundort: </em>',gf$locality,
+                                '<br/><em>Unsch√§rferadius: </em>',gf$coordinateUncertaintyInMeters,
+                                '<br/><em>Datum: </em>',gf$month,"/",gf$year,
+                                '<br/><a href="',gf$occurrenceID,'" target="_blank">publizierter Nachweis</a>'))))
       } else {
         SpatialPointsDataFrame(cbind(as.double(gf$decimalLongitude),as.double(gf$decimalLatitude)),
-                               data.frame(gLabel=ifelse("verbatimLocality" %in% colnames(gf),
-                                                    paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
-                                                          '<br/><em>Fundort: </em>',paste0(gf$locality,"/",gf$verbatimLocality),
-                                                          '<br/><em>Unsch‰rferadius: </em>',gf$coordinateUncertaintyInMeters,
-                                                          '<br/><em>Datum: </em>',gf$month,"/",gf$year),
-                                                    paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
-                                                          '<br/><em>Fundort: </em>',gf$locality,
-                                                          '<br/><em>Unsch‰rferadius: </em>',gf$coordinateUncertaintyInMeters,
-                                                          '<br/><em>Datum: </em>',gf$month,"/",gf$year))))
-      }
+              data.frame(gLabel=paste0('<em>Institution: </em>',gf$institutionCode,"/",gf$collectionCode,
+                                       '<br/><em>Fundort: </em>',gf$locality,
+                                       '<br/><em>Unsch√§rferadius: </em>',gf$coordinateUncertaintyInMeters,
+                                       '<br/><em>Datum: </em>',gf$month,"/",gf$year)))
+              }
     }
   })
 # retrieve and process data from Artenfinder
@@ -287,7 +287,7 @@ server <- function(input, output, session) {
   })
 # show Florkart distribution data
   observeEvent(er_Florkart(), {
-# Achtung: die domain-Werte m¸ssen mit den mˆglichen Werten in df$records$zeitraum_text ¸bereinstimmen, 
+# Achtung: die domain-Werte m√ºssen mit den m√∂glichen Werten in df$records$zeitraum_text √ºbereinstimmen, 
 # die domain-Liste wird alphabetisch sortiert und in dieser Reihenfolge den Palette-Weren zugewiesen    
     pal <- colorFactor(palette = c("yellow", "green","red"), domain = c("vor 1950","1950-1979","ab 1980"))
     proxy %>% addCircles(data=er_Florkart(),group="FlorKart",color=~pal(zeit),stroke = FALSE, fillOpacity = 0.5,
