@@ -147,8 +147,8 @@ server <- function(input, output, session) {
   })
   # retrieve and process data from GBIF
   er_Gbif <- eventReactive(input$gbifMap,{
-    df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxonbyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
-    sname <- URLencode(df_name$records$sciName)
+    df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
+    sname <- URLencode(df_name$latName)
     gf <- subset(occ_data(scientificName = sname, country="DE", hasCoordinate = TRUE, limit = 10000)$data, 
                  institutionCode != "BfN")
     if (length(gf$decimalLatitude) >= 1) {
@@ -189,8 +189,8 @@ server <- function(input, output, session) {
   })
 # retrieve and process data from Artenfinder
   er_Artenfinder <- eventReactive(input$afMap,{
-    df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxonbyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
-    sname <- URLencode(df_name$records$sciName)
+    df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
+    sname <- URLencode(df_name$latName)
     af_url <- paste0("https://artenfinder.rlp.de/api/v2/sichtbeobachtungen?format=xml&restrict=id,lat,lon,datum,bemerkung,foto&titel_wissenschaftlich=",sname)
     af_xml <- read_xml(af_url)
     af_xmldoc <- xmlInternalTreeParse(af_xml,encoding = "utf-8")
