@@ -22,7 +22,7 @@ library(XML)
 library(htmltools)
 library(rlist)
 
-# Define UI for application that draws a histogram
+# Define UI
 ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
                 tags$head(tags$style(HTML("hr {border-top: 1px solid #000000;}"))),
   add_busy_bar(centered=TRUE, color = "#FF0000"),
@@ -47,14 +47,7 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
           br(),hr(),br(),
           checkboxInput("cb_florkart", label = "Atlas", value = FALSE),
           checkboxInput("cb_gbif", label = "GBIF", value = FALSE),
-          checkboxInput("cb_artenfinder", label = "Artenfinder", value = FALSE)),
-        tabPanel(title = "Overlaykarten", value = "overlays",
-          checkboxInput("cb_pnv", label = "Pot.Nat.Vegetation", value = FALSE),
-          checkboxInput("cb_nsg", label = "Naturschutzgebiete", value = FALSE),
-          checkboxInput("cb_np", label = "Nationalparke", value = FALSE), 
-          checkboxInput("cb_ffh", label = "FFH-Gebiete", value = FALSE),
-          checkboxInput("cb_bsr", label = "Biosphärenreservate", value = FALSE),
-          checkboxInput("cb_rgl", label = "Naturräume", value = FALSE)) 
+          checkboxInput("cb_artenfinder", label = "Artenfinder", value = FALSE))
     ) # tabsetpanel
     ), # sidebarpanel  
     mainPanel(
@@ -108,13 +101,21 @@ server <- function(input, output, session) {
                 attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
     addLayersControl(
       baseGroups = c("OSM", "Topo", "ESRI Sat"),
-#      overlayGroups = c("PNV","NSG","NP","FFH","BSR","RGL"),
+      overlayGroups = c("PNV","NSG","NP","FFH","BSR","RGL"),
       options = layersControlOptions(collapsed = TRUE)) %>%
+      hideGroup("PNV") %>% hideGroup("NSG") %>% hideGroup("NP") %>% hideGroup("FFH") %>%
+      hideGroup("BSR") %>% hideGroup("RGL") %>%
     addResetMapButton()
     )
+# define image urls for wms legends
+  legNP <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Nationalparke&'>"
+  legNSG <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Naturschutzgebiete&'>"
+  legFFH <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Fauna_Flora_Habitat_Gebiete&'>"
+  legBSR <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Biosphaerenreservate&'>"
+  legRGL <- "<img src='http://geodienste.bfn.de/ogc/wms/gliederungen?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Naturraeume&'>Naturraeume<br/>"
 
 # map-proxy for changing map-content witout redrawing the complete map
-  proxy <- leafletProxy("myMap")
+  proxy <- leafletProxy("myMap",session)
 
 # reactive functions 
 # search names according genus and species nameparts
@@ -211,50 +212,21 @@ server <- function(input, output, session) {
     }
   })
 # observers
-# checking checkboxes for map overlays
+# observing checkboxes for map overlay groups
   observe({
-    if (input$cb_pnv) 
-    {proxy %>% showGroup("PNV")}
-    else {proxy %>% hideGroup("PNV")}
-    if (input$cb_nsg) {
-      legNSG <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Naturschutzgebiete&'>"
-      proxy %>% addControl(html = legNSG, position = "bottomright",layerId="nsg", className = "legend")
-      proxy %>% showGroup("NSG")
-      }
-    else {      
-      proxy %>% removeControl("nsg")
-      proxy %>% hideGroup("NSG")}
-    if (input$cb_np) {
-      legNP <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Nationalparke&'>"
-      proxy %>% addControl(html = legNP, position = "bottomright",layerId = "np", className = "legend")
-      proxy %>% showGroup("NP")}
-    else {
-      proxy %>% removeControl("np")
-      proxy %>% hideGroup("NP")}
-    if (input$cb_ffh) {
-      legFFH <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Fauna_Flora_Habitat_Gebiete&'>"
-      proxy %>% addControl(html = legFFH, position = "bottomright",layerId = "ffh", className = "legend")
-      proxy %>% showGroup("FFH")}
-    else {
-      proxy %>% removeControl("ffh")
-      proxy %>% hideGroup("FFH")}
-    if (input$cb_bsr) {
-      legBSR <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Biosphaerenreservate&'>"
-      proxy %>% addControl(html = legBSR, position = "bottomright",layerId = "bsr", className = "legend")
-      proxy %>% showGroup("BSR")}
-    else {
-      proxy %>% removeControl("bsr")
-      proxy %>% hideGroup("BSR")}
-    if (input$cb_rgl) {
-      legRGL <- "<img src='http://geodienste.bfn.de/ogc/wms/gliederungen?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Naturraeume&'>Naturraeume<br/>"
-      proxy %>% addControl(html = legRGL, position = "bottomright",layerId = "rgl", className = "legend")
-      proxy %>% showGroup("RGL")}
-    else {
-      proxy %>% removeControl("rgl")
-      proxy %>% hideGroup("RGL")}
-  })
-# checking checkboxes for distribution data overlays
-  observe({
+    proxy %>% clearControls()
+    # adding legend controls when group is selected
+    if (any(input$myMap_groups %in% "NP")){
+      proxy %>% addControl(html = legNP, position = "bottomright")}
+    if (any(input$myMap_groups %in% "NSG")){
+      proxy %>% addControl(html = legNSG, position = "bottomright")} 
+    if (any(input$myMap_groups %in% "FFH")){
+      proxy %>% addControl(html = legFFH, position = "bottomright")} 
+    if (any(input$myMap_groups %in% "BSR")){
+      proxy %>% addControl(html = legBSR, position = "bottomright")}
+    if (any(input$myMap_groups %in% "RGL")){
+      proxy %>% addControl(html = legRGL, position = "bottomright")}  
+# adding dynamic distribution data overlays
     if (input$cb_florkart)
     {proxy %>% showGroup("FlorKart")
       pal <- colorFactor(palette = c("yellow", "green","red"), domain = c("vor 1950","1950-1979","ab 1980"))
