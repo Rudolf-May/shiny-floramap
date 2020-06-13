@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head profile="http://dublincore.org/documents/dcmi-terms/">
+		<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/>
+		<title xml:lang="en-US">about FloraMap</title>
+		<meta name="DCTERMS.title" content="" xml:lang="en-US"/>
+		<meta name="DCTERMS.language" content="en-US" scheme="DCTERMS.RFC4646"/>
+		<meta name="DCTERMS.source" content="http://xml.openoffice.org/odf2xhtml"/>
+		<meta name="DCTERMS.creator" content="Rudolf May"/>
+		<meta name="DCTERMS.issued" content="2020-06-10T13:18:43.411474365" scheme="DCTERMS.W3CDTF"/>
+		<meta name="DCTERMS.contributor" content="Rudolf May"/>
+		<meta name="DCTERMS.modified" content="2020-06-10T15:15:18.931653675" scheme="DCTERMS.W3CDTF"/>
+		<meta name="DCTERMS.provenance" content="" xml:lang="en-US"/>
+		<meta name="DCTERMS.subject" content="," xml:lang="en-US"/>
+		<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/" hreflang="en"/>
+		<link rel="schema.DCTERMS" href="http://purl.org/dc/terms/" hreflang="en"/>
+		<link rel="schema.DCTYPE" href="http://purl.org/dc/dcmitype/" hreflang="en"/>
+		<link rel="schema.DCAM" href="http://purl.org/dc/dcam/" hreflang="en"/>
+</head>
+<body> 
+	<h3>FloraMap - Verbreitungsatlas und Beobachtungen</h3>
+	<h4>Was vermitteltdie Anwendung?</h4>
+	<p>FloraMap erlaubt es, zu einzelnen Arten (Taxa) die Verbreitungs- und Beobachtungsdaten von mehreren Plattformen über Web-Schnittstellen abzufragen und auf einer Karte mit verschiedenen, auswählbaren Basis-Karten und zusätzlichen Geodaten darzustellen. Ein Ziel der Anwendung ist daher, die Nutzung bestehender Webdienste für die kartographische Darstellung von Beobachtungs- und Verbreitungsdaten zu demonstrieren.</p>
+	<h5>Verbreitungsdaten von FloraWeb</h5>
+	<p>Die Verbreitungsdaten von FloraWeb basieren auf dem 2013 publizierten "Verbreitungsatlas der Farn- und Blütenpflanzen Deutschlands" Sie wurden über mehrere Jahrzehnte für ganz Deutschland aus flächendeckenden floristischen Kartierungen kompiliert. Da bei floristischen Kartierungsprojekten die untersuchten Regionen in Rasterfelder unterteilt werden und jede Rasterzelle auf das Vorkommen aller Arten untersucht wird, geben sie den bestmöglichen Kenntnisstand zum Areal (=Verbreitungsgebiet) der jeweiligen Art in Deutschland wieder.</p>
+	<h5>Beobachtungsdaten aus <a href="http://www.gbif.org/">GBIF</a></h5>
+	<p>Die "Global Biodiversity Information Facility (GBIF)" ist eine internationale Einrichtung zur Zusammenführung und Bereitstellung von Beobachtungs- und Sammlungsdaten. Verschiedenene deutsche Institutionen und Betreiber von Sammlungs- und Beobachtungssystemen liefern ihre Sammlungs- und Beobachtungsdaten an GBIF. Da diese nicht aus systematischen flächendeckenden Kartierungen stammen, sondern im wesentlichen auf unsystematischen Einzelerhebungen beruhen, geben die Daten zu einer Art nicht das Areal wieder, können jedoch die "Atlasdaten" mit neueren Funde ergänzen. Nicht durch Sammlungsbelege oder Fotos dokumentierte Beobachtungen ausserhalb des durch die Atlasdaten dargestellten Areals sollten jedoch kritisch geprüft werden.</p>
+	<h5>Beobachtungsdaten aus <a href="https://de.wikipedia.org/wiki/ArtenFinder">Artenfinder</a></h5>
+	<p>Die Artenfinder-Plattform wurde 2011 als eine "Citizen Science" Initiative vom Bundesland Rheinland-Pfalz gegründet und wird inzwischen von der "Stiftung Natur und Umwelt Rheinland-Pfalz" betrieben. Die Beobachtungsdaten von Tieren, Pflanzen und Pilzen werden meist über eine Smartphone-App erhoben und konzentrieren sich auf Rheinland-Pfalz und angrenzende Gebiete. Die Beobachtungsdaten zu Pflanzen sind - wie bei vielen anderen "Citizen Science" Projekten - nicht systematisch und flächendeckend erhoben. Sie dokumentieren einzelne Vorkommen, geben jedoch ebenfalls kein Areal wieder.</p>
+	<h5>WorkFlow</h5>
+	<p>Nach Aufruf der Anwendung befinden sich im linken Drittel des Darstellungsfensters die Möglichkeiten zur Artensuche/-auswahl, die Bedienknöpfe zur Abfrage der Verbreitungs- und Beobachtungsdaten sowie 3 checkboxen, über diese Datenlayer auf der Karteein- bzw. ausgeschaltet </p>
+	<h4>Zur Technik</h4>
+	<p>Die Anwendung beruht vollständig auf quelloffenen Softwarekomponenten auf Basis der Statistik-Software R. Für die Visualisierung von Karteninhalten wird die weit verbreitete javascript-Bibliothek <em>leaflet</em> in der Version des entsprechenden R-Paketes verwendet. Die html-Umgebung wird mit reaktiven Komponenten des R-Pakets "shiny" aufgebaut und verwendet dessen responsives layout auf Basis der css-Bibliothek <em>bootstrap2</em>.</p>
+	<h5>Kartendienste</h5>
+	<p>Als Basis-Karten werden die frei verfügbaren Karten-Kacheldienste (tile map services) "openstreetmap", "opentopomap" und ESRI.WorldImagery" verwendet. Die zusätzlichen Overlay-Karten werden vom Geodatenservice des Bundesamtes für Naturschutz (BfN) als WMS-Dienste im Rahmen der Geodaten-Infrastruktur (GDI-DE) angeboten.</p>
+	<h5>Webservices zu FloraWeb, GBIF und Artenfinder</h5>
+	<p></p>
+</body>
+</html>
