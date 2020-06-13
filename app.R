@@ -51,8 +51,12 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
     ) # tabsetpanel
     ), # sidebarpanel  
     mainPanel(
-      textOutput("atlasrecs"),textOutput("gbifrecs"),textOutput("afrecs"),
-      leafletOutput("myMap",height = 550))
+      tabsetPanel(
+        tabPanel("Karte",
+          textOutput("atlasrecs"),textOutput("gbifrecs"),textOutput("afrecs"),
+          leafletOutput("myMap",height = 550)),
+        tabPanel("über FloraMap", includeHTML("floramap-hilfe.html"))
+      ))
   ) # sidebarlayout
 ) # fluidpage
 
@@ -150,8 +154,14 @@ server <- function(input, output, session) {
   er_Gbif <- eventReactive(input$gbifMap,{
     df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
     sname <- URLencode(df_name$latName)
-    gf <- subset(occ_data(scientificName = sname, country="DE", hasCoordinate = TRUE, limit = 10000)$data, 
-                 institutionCode != "BfN")
+    sciname <- URLencode(df_name$sciName)
+    gf <- occ_data(scientificName = sname, country="DE", hasCoordinate = TRUE, limit = 10000)$data
+    if (length(gf)==0){
+      gf <- occ_data(scientificName = sciname, country="DE", hasCoordinate = TRUE, limit = 10000)$data
+    }
+    if (length(gf)>0){
+      gf <- subset(gf, institutionCode != "BfN")
+    }
     if (length(gf$decimalLatitude) >= 1) {
       output$gbifrecs <- renderText(paste0("Fertig: ",as.character(length(gf$decimalLatitude))," GBIF-Beobachtungen"))
       updateCheckboxInput(session,"cb_gbif", value = TRUE)
