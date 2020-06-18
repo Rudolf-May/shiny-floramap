@@ -36,25 +36,28 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
       tabsetPanel(id="mytabs",type = "tabs",
         tabPanel(title = "Beobachtungen", value = "obs",
                  br(),
+          h4("Namenssuche"),        
           textInput("suchName",label="Wortanfang Gattung Art"),
           actionButton("taxSuche","Trefferliste"),
           br(),br(),
           selectizeInput("artWahl","Trefferauswahl",choices=setNames(80,"Adonis vernalis")),
-          br(),hr(),
+          hr(),
+          h4("Nachweise abfragen"),
           actionButton("distMap","Atlas Verbreitung"),
           actionButton("gbifMap","GBIF Daten"),
           actionButton("afMap", "Artenfinder Daten"),
-          br(),hr(),br(),
+          hr(),
+          h4("Kartenanzeige ein/aus"),
           checkboxInput("cb_florkart", label = "Atlas", value = FALSE),
           checkboxInput("cb_gbif", label = "GBIF", value = FALSE),
-          checkboxInput("cb_artenfinder", label = "Artenfinder", value = FALSE))
+          checkboxInput("cb_artenfinder", label = "Artenfinder", value = FALSE)),br()
     ) # tabsetpanel
     ), # sidebarpanel  
     mainPanel(
       tabsetPanel(
         tabPanel("Karte",
           textOutput("atlasrecs"),textOutput("gbifrecs"),textOutput("afrecs"),
-          leafletOutput("myMap",height = 550)),
+          leafletOutput("myMap",height = 600)),
         tabPanel("über FloraMap", includeHTML("floramap-hilfe.html"))
       ))
   ) # sidebarlayout
@@ -206,18 +209,26 @@ server <- function(input, output, session) {
     af_xml <- read_xml(af_url)
     af_xmldoc <- xmlInternalTreeParse(af_xml,encoding = "utf-8")
     af_df <- xmlToDataFrame(nodes = getNodeSet(af_xmldoc,"//xml/result/row"),stringsAsFactors=FALSE)
-    output$afrecs <- renderText(paste0("Fertig: ",as.character(length(af_df$lat))," Artenfinder-Beobachtungen"))
-    if (length(af_df$lat) >= 1){
+    output$afrecs <- renderText(paste0("Fertig: ",as.character(length(af_df))," Artenfinder-Beobachtungen"))
+    if (length(af_df) > 0){
       updateCheckboxInput(session,"cb_artenfinder", value = TRUE)
+      if ("foto" %in% colnames(af_df)){
       af_sp <- SpatialPointsDataFrame(cbind(as.double(af_df$lon),as.double(af_df$lat)),
                                       proj4string = CRS("+init=epsg:25832"),
-                                      data.frame(afLabel=ifelse(is.na(af_df$foto),
+                                      data.frame(afLabel=ifelse(is.na(af_df$foto),# foto %in% colnames(af_df)
                                                                 paste0("<em>Artenfinder Beobachtung<br/>Datum: </em>",af_df$datum,
                                                                        "<br/><em>Bemerkung: </em>",af_df$bemerkung,
                                                                        "<br/>kein Foto"),
                                                                 paste0("<em>Artenfinder Beobachtung<br/>Datum: </em>",af_df$datum,
                                                                        "<br/><em>Bemerkung: </em>",af_df$bemerkung,
                                                                        "<br/><a href='",af_df$foto,"' target='_blank'>Fotolink</a>"))))
+      }
+      else {
+        af_sp <- SpatialPointsDataFrame(cbind(as.double(af_df$lon),as.double(af_df$lat)),
+                                        proj4string = CRS("+init=epsg:25832"),
+                                        data.frame(afLabel=paste0("<em>Artenfinder Beobachtung<br/>Datum: </em>",af_df$datum,
+                                                                  "<br/><em>Bemerkung: </em>",af_df$bemerkung)))
+      }
       spTransform(af_sp,CRS("+proj=longlat +datum=WGS84 +no_defs"))
     }
   })
@@ -256,7 +267,11 @@ server <- function(input, output, session) {
     output$atlasrecs <- renderText("Atlas Quadranten...")
     output$gbifrecs <- renderText("GBIF Beobachtungen...")
     output$afrecs <- renderText("Artenfinder Beobachtungen...")
+    proxy %>% clearControls()
     proxy %>% clearGroup("AF") %>% clearGroup("GBIF") %>% clearGroup("FlorKart")
+    updateCheckboxInput(session,"cb_florkart",value = FALSE)
+    updateCheckboxInput(session,"cb_gbif", value = FALSE)
+    updateCheckboxInput(session,"cb_artenfinder", value = FALSE)
   })
 # event observers for buttonclick reactive functions
 # fill selectize box with new hits from namesearch and clear distribution overlays
