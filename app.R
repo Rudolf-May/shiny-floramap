@@ -106,17 +106,17 @@ server <- function(input, output, session) {
                 layers = "Naturraeume",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
                 attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
-    addWMSTiles(baseUrl = "http://sg.geodatenzentrum.de/wms_vg25?",
-                group="VG25",
-                layers = "vg25_krs",
+    addWMSTiles(baseUrl = "http://sg.geodatenzentrum.de/wms_vg250-ew?",
+                group="VG250",
+                layers = "vg250_krs",
                 options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarte: (c) Bundesamt für Geodäsie (BKG) 2015" ) %>%
+                attribution = "Overlaykarte: (c) Bundesamt für Kartographie und Geodäsie (BKG) 2014" ) %>%
     addLayersControl(
       baseGroups = c("OSM", "Topo", "ESRI Sat"),
-      overlayGroups = c("PNV","NSG","NP","FFH","BSR","RGL","VG25"),
+      overlayGroups = c("PNV","NSG","NP","FFH","BSR","RGL","VG250"),
       options = layersControlOptions(collapsed = TRUE)) %>%
       hideGroup("PNV") %>% hideGroup("NSG") %>% hideGroup("NP") %>% hideGroup("FFH") %>%
-      hideGroup("BSR") %>% hideGroup("RGL") %>% hideGroup("VG25") %>%
+      hideGroup("BSR") %>% hideGroup("RGL") %>% hideGroup("VG250") %>%
     addResetMapButton()
     )
 # define image urls for wms legends
@@ -124,8 +124,8 @@ server <- function(input, output, session) {
   legNSG <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Naturschutzgebiete&'>"
   legFFH <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Fauna_Flora_Habitat_Gebiete&'>"
   legBSR <- "<img src='http://geodienste.bfn.de/ogc/wms/schutzgebiet?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Biosphaerenreservate&'>"
-  legRGL <- "<img src='http://geodienste.bfn.de/ogc/wms/gliederungen?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Naturraeume&'>&nbsp;Naturraeume<br/>"
-  legVG25 <- "<img src='http://sg.geodatenzentrum.de/wms_vg25?request=GetLegendGraphic&version=1.3.0&format=image/png&width=16&height=16&layer=vg25_krs'>&nbsp;Kreise<br/>"
+  legRGL <- "<img src='http://geodienste.bfn.de/ogc/wms/gliederungen?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=Naturraeume&'>Naturraeume<br/>"
+  legVG250 <-"<img src='http://sg.geodatenzentrum.de/wms_vg250-ew?request=GetLegendGraphic&version=1.3.0&format=image/png&width=16&height=16&layer=vg250_krs'>Kreise<br/>"
 
 # map-proxy for changing map-content witout redrawing the complete map
   proxy <- leafletProxy("myMap",session)
@@ -253,8 +253,8 @@ server <- function(input, output, session) {
       proxy %>% addControl(html = legBSR, position = "bottomright")}
     if (any(input$myMap_groups %in% "RGL")){
       proxy %>% addControl(html = legRGL, position = "bottomright")}  
-    if (any(input$myMap_groups %in% "VG25")){
-      proxy %>% addControl(html = legVG25, position = "bottomright")}  
+    if (any(input$myMap_groups %in% "VG250")){
+      proxy %>% addControl(html = legVG250, position = "bottomright")}  
 # adding dynamic distribution data overlays
     if (input$cb_florkart)
     {proxy %>% showGroup("FlorKart")
