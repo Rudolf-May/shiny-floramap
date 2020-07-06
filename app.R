@@ -215,7 +215,7 @@ server <- function(input, output, session) {
     af_xml <- read_xml(af_url)
     af_xmldoc <- xmlInternalTreeParse(af_xml,encoding = "utf-8")
     af_df <- xmlToDataFrame(nodes = getNodeSet(af_xmldoc,"//xml/result/row"),stringsAsFactors=FALSE)
-    output$afrecs <- renderText(paste0("Fertig: ",as.character(length(af_df))," Artenfinder-Beobachtungen"))
+    output$afrecs <- renderText(paste0("Fertig: ",as.character(length(af_df$lon))," Artenfinder-Beobachtungen"))
     if (length(af_df) > 0){
       updateCheckboxInput(session,"cb_artenfinder", value = TRUE)
       if ("foto" %in% colnames(af_df)){
