@@ -17,8 +17,8 @@ library(rgbif)
 library(sp)
 library(stringr)
 library(dplyr)
-library(xml2)
-library(XML)
+library(xml2) # fuer read_xml()
+library(XML) # fuer xmlInternalTreeParse
 library(htmltools)
 library(rlist)
 
