@@ -139,13 +139,13 @@ server <- function(input, output, session) {
     else
     {
       if (is.na(sn[2])){sn[2]<-""}
-      df_namen <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxa_json.xsql?gat=",sn[1],"&art=",sn[2]),simplifyDataFrame = TRUE)
+      df_namen <- fromJSON(paste0("https://www.floraweb.de/pflanzenarten/taxa_json.xsql?gat=",sn[1],"&art=",sn[2]),simplifyDataFrame = TRUE)
       setNames(df_namen$taxonId,df_namen$latName)
     }
   })
   # retrieve and process data from florkart database (bfn)
   er_Florkart <- eventReactive(input$distMap,{
-    df <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/atlas_json.xsql?suchnr=",input$artWahl,"&grid=quad"),simplifyDataFrame = TRUE)
+    df <- fromJSON(paste0("https://www.floraweb.de/pflanzenarten/atlas_json.xsql?suchnr=",input$artWahl,"&grid=quad"),simplifyDataFrame = TRUE)
 #    updateTextInput(session,inputId = "taxName",value = df$taxname)
     numPoints <- length(df$records$lat)-1 # json-Ausgabe der records hat immer einen n/a am Ende
     output$atlasrecs <- renderText(paste0("Fertig: ",as.character(numPoints)," Atlas MTB-Quaranten"))
@@ -161,7 +161,7 @@ server <- function(input, output, session) {
   })
   # retrieve and process data from GBIF
   er_Gbif <- eventReactive(input$gbifMap,{
-    df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
+    df_name <- fromJSON(paste0("https://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
     sname <- URLencode(df_name$latName)
     sciname <- URLencode(df_name$sciName)
     gf <- occ_data(scientificName = sname, country="DE", hasCoordinate = TRUE, limit = 10000)$data
@@ -209,7 +209,7 @@ server <- function(input, output, session) {
   })
 # retrieve and process data from Artenfinder
   er_Artenfinder <- eventReactive(input$afMap,{
-    df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
+    df_name <- fromJSON(paste0("https://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
     sname <- URLencode(df_name$latName)
     af_url <- paste0("https://artenfinder.rlp.de/api/v2/sichtbeobachtungen?format=xml&restrict=id,lat,lon,datum,bemerkung,foto&titel_wissenschaftlich=",sname)
     af_xml <- read_xml(af_url)
@@ -239,6 +239,15 @@ server <- function(input, output, session) {
     }
   })
 # observers
+# observe if an url parameter has been provided
+  observe({
+    query <- parseQueryString(session$clientData$url_search)
+    if (!is.null(query[['taxonid']])) {
+      url_namen <- fromJSON(paste0("https://floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",query[['taxonid']]),simplifyDataFrame = TRUE)
+      updateTextInput(session, "suchName", value = url_namen$latName)
+      updateSelectizeInput(session, "artwahl", choices = setNames(url_namen$taxonId,url_namen$latName))
+    }
+  })
 # observing checkboxes for map overlay groups
   observe({
     proxy %>% clearControls()
