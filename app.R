@@ -46,11 +46,13 @@ ui <- fluidPage(title = "FloraMap - Beobachtungen und Verbreitung",
           h4("Nachweise abfragen"),
           actionButton("distMap","Atlas Verbreitung"),
           actionButton("gbifMap","GBIF Daten"),
+          actionButton("wb_bb" , "WerBeo Brandenburg"),
           actionButton("afMap", "Artenfinder Daten"),
           hr(),
           h4("Kartenanzeige ein/aus"),
           checkboxInput("cb_florkart", label = "Atlas", value = FALSE),
           checkboxInput("cb_gbif", label = "GBIF", value = FALSE),
+          checkboxInput("cb_wb_bb", label= "WerBeo BB", value=FALSE ),
           checkboxInput("cb_artenfinder", label = "Artenfinder", value = FALSE)),br()
     ) # tabsetpanel
     ), # sidebarpanel  
@@ -166,6 +168,7 @@ server <- function(input, output, session) {
                                                    "<br/><em>Nachweiszeitraum: </em>",df$records$zeitraum_text[1:numPoints],
                                                    "<br/><em>Status: </em>",df$records$status[1:numPoints])))
   })
+ 
   # retrieve and process data from GBIF
   er_Gbif <- eventReactive(input$gbifMap,{
     df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
@@ -214,6 +217,33 @@ server <- function(input, output, session) {
               }
     }
   })
+# retrieve and process data from WerBeo Brandenburg
+  er_wb_bb <- eventReactive(input$wb_bb, {
+    df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE) 
+    sname <- URLencode(df_name$latName)
+    sciname <- URLencode(df_name$sciName)
+    df_wb_name <- fromJSON(paste0("https://service.infinitenature.org/api/v1/2/taxa?languages=LAT&limit=10&nameContains=",
+                                  sname,"&offset=0&onlyTaxaAvailableForInput=false&onlyUsedTaxa=true&withSynonyms=false"))
+    if (df_wb_name$numberOfElements>0){
+      wb_name_id <- as.character(df_wb_name$taxon$id[1])
+      wb_data <- fromJSON(paste0("https://service.infinitenature.org/api/v1/2/occurrences?includeChildTaxa=true&inlineThumbs=false&limit=200&offset=0&sortField=MOD_DATE&sortOrder=ASC&taxon=",wb_name_id))
+      if (wb_data$numberOfElements > 0) {
+        updateCheckboxInput(session,"cb_wb_bb", value = TRUE)
+#        wb_proj <- as.character(wb_data$occurrences$sample$locality$position$epsg[1])
+        wb_proj <- "25833"
+        wb_grid <- wb_data$occurrences$sample$locality$position$mtb
+        wb_survey <- wb_data$occurrences$sample$survey
+        wb_bb_sp <- SpatialPointsDataFrame(cbind(as.double(wb_data$occurrences$sample$locality$position$posCenterLongitude/10)
+          ,as.double(wb_data$occurrences$sample$locality$position$posCenterLatitude)),
+          proj4string = CRS("+init=epsg:25833"),
+          data.frame(afLabel=paste0("<em>WerBeo Brandenburg<br/>
+                                    MTB/Minutenfeld:</em>",wb_grid$mtb,
+                                    "<br/><em>Projekt: </em>",wb_survey$name)))
+        spTransform(wb_bb_sp,CRS("+init=epsg:4236"))
+      }
+    }
+  }
+  ) # of er_wb_bb  
 # retrieve and process data from Artenfinder
   er_Artenfinder <- eventReactive(input$afMap,{
     df_name <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",input$artWahl),simplifyDataFrame = TRUE)
@@ -242,20 +272,10 @@ server <- function(input, output, session) {
                                         data.frame(afLabel=paste0("<em>Artenfinder Beobachtung<br/>Datum: </em>",af_df$datum,
                                                                   "<br/><em>Bemerkung: </em>",af_df$bemerkung)))
       }
-      spTransform(af_sp,CRS("+proj=longlat +datum=WGS84 +no_defs"))
+      spTransform(af_sp,CRS(SRS_string = "EPSG:4326"))
     }
   })
 # observers
-# observe if an url parameter has been provided
-  observe({
-    query <- parseQueryString(session$clientData$url_search)
-    if (!is.null(query[['taxonid']])) {
-      url_namen <- fromJSON(paste0("http://floraweb.de/pflanzenarten/taxnamebyid_json.xsql?taxon_id=",query[['taxonid']]),simplifyDataFrame = TRUE)
-      updateTextInput(session, "suchName", value = url_namen$latName)
-      sel_Name <- setNames(url_namen$taxonId,url_namen$latName)
-      updateSelectizeInput(session, "artwahl", choices = sel_Name)
-    }
-  })
 # observing checkboxes for map overlay groups
   observe({
     proxy %>% clearControls()
@@ -272,6 +292,7 @@ server <- function(input, output, session) {
       proxy %>% addControl(html = legRGL, position = "bottomright")}  
     if (any(input$myMap_groups %in% "VG250")){
       proxy %>% addControl(html = legVG250, position = "bottomright")}  
+
 # adding dynamic distribution data overlays
     if (input$cb_florkart)
     {proxy %>% showGroup("FlorKart")
@@ -281,10 +302,13 @@ server <- function(input, output, session) {
     }
     else {proxy %>% hideGroup("FlorKart") %>% removeControl("legFlorkart")}
     if (input$cb_gbif)
-    {proxy %>% showGroup("GBIF")}
+      {proxy %>% showGroup("GBIF")}
     else {proxy %>% hideGroup("GBIF")}
+    if (input$cb_wb_bb)
+      {proxy %>% showGroup("BB")}
+    else {proxy %>% hideGroup("BB")}
     if (input$cb_artenfinder)
-    {proxy %>% showGroup("AF")}
+      {proxy %>% showGroup("AF")}
     else {proxy %>% hideGroup("AF")}
   })
 # event observer for selectize box: clear distribution overlays, when selected species changes
@@ -293,9 +317,10 @@ server <- function(input, output, session) {
     output$gbifrecs <- renderText("GBIF Beobachtungen...")
     output$afrecs <- renderText("Artenfinder Beobachtungen...")
     proxy %>% clearControls()
-    proxy %>% clearGroup("AF") %>% clearGroup("GBIF") %>% clearGroup("FlorKart")
+    proxy %>% clearGroup("AF") %>% clearGroup("BB") %>% clearGroup("GBIF") %>% clearGroup("FlorKart")
     updateCheckboxInput(session,"cb_florkart",value = FALSE)
     updateCheckboxInput(session,"cb_gbif", value = FALSE)
+    updateCheckboxInput(session,"cb_wb_bb", value = FALSE)
     updateCheckboxInput(session,"cb_artenfinder", value = FALSE)
   })
 # event observers for buttonclick reactive functions
@@ -304,8 +329,9 @@ server <- function(input, output, session) {
     updateSelectizeInput(session,"artWahl",choices = er_Namen())
     updateCheckboxInput(session,"cb_florkart",value = FALSE)
     updateCheckboxInput(session,"cb_gbif",value = FALSE)
+    updateCheckboxInput(session,"cb_wb_bb", value = FALSE)
     updateCheckboxInput(session,"cb_artenfinder",value = FALSE)
-    proxy %>% clearGroup("AF") %>% clearGroup("GBIF") %>% clearGroup("FlorKart")
+    proxy %>% clearGroup("AF") %>% clearGroup("BB") %>% clearGroup("GBIF") %>% clearGroup("FlorKart")
   })
 # show Florkart distribution data
   observeEvent(er_Florkart(), {
@@ -317,11 +343,15 @@ server <- function(input, output, session) {
               addLegend(position = "bottomleft",pal=pal, values = c("vor 1950","1950-1979","ab 1980"),
                         title = "Nachweiszeitraum", group = "FlorKart", layerId = "legFlorkart")
   })
-# show GBIF distribution data (takes some minutes...)
+# show GBIF observation data (takes some minutes...)
   observeEvent(er_Gbif(), {
       proxy %>% addCircleMarkers(data = er_Gbif(),group="GBIF",popup = ~gLabel)
   })
-# show Artenfinder distribution data  
+# show WerBeo Brandenburg observation data
+  observeEvent(er_wb_bb(), {
+      proxy %>% addCircleMarkers(data = er_wb_bb(), group = "BB", color = "brown")
+  })
+# show Artenfinder observation data  
   observeEvent(er_Artenfinder(), {
         proxy %>% addCircleMarkers(data = er_Artenfinder(), group = "AF", popup = ~afLabel, color = "purple")
   })
