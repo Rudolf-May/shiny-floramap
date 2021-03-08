@@ -12,6 +12,7 @@ library(shiny)
 library(shinybusy)
 library(leaflet)
 library(leaflet.extras)
+library(leaflet.extras2) # fuer dynamische featureinfo Abfragen von wms-Karten (muessen über https eingebunden sein)
 library(jsonlite)
 library(rgbif)
 library(sp)
@@ -76,42 +77,48 @@ server <- function(input, output, session) {
     setView(lng=10,lat=51.2, zoom = 6) %>% addTiles(group = "OSM") %>%
     addProviderTiles(providers$OpenTopoMap, group = "Topo") %>%
     addProviderTiles(providers$Esri.WorldImagery, group = "ESRI Sat") %>%
-    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/pnv500?",
-                group="PNV",
-                layers = c("Vegetationsgebiete","PNV500"),
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
-    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
-                group="NSG",
-                layers = "Naturschutzgebiete",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
-    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
-                group="NP",
-                layers = "Nationalparke",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
-    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
-                group="FFH",
-                layers = "Fauna_Flora_Habitat_Gebiete",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
-    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/schutzgebiet?",
-                group="BSR",
-                layers = "Biosphaerenreservate",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
-    addWMSTiles(baseUrl = "http://geodienste.bfn.de/ogc/wms/gliederungen?",
-                group="RGL",
-                layers = "Naturraeume",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
-    addWMSTiles(baseUrl = "http://sg.geodatenzentrum.de/wms_vg250-ew?",
-                group="VG250",
-                layers = "vg250_krs",
-                options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7),
-                attribution = "Overlaykarte: (c) Bundesamt für Kartographie und Geodäsie (BKG) 2014" ) %>%
-    addLayersControl(
+      addWMS(baseUrl = "https://geodienste.bfn.de/ogc/wms/pnv500?",
+             group="PNV",
+             layers = c("Vegetationsgebiete","PNV500"),
+             options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7,info_format = "text/html",tiled = FALSE),
+             attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
+      addWMS(baseUrl = "https://geodienste.bfn.de/ogc/wms/schutzgebiet?",
+             group="NSG",
+             layers = "Naturschutzgebiete",
+             #popupOptions = popupOptions(maxWidth = 600),
+             options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7,info_format = "text/html",tiled = FALSE),
+             attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+      addWMS(baseUrl = "https://geodienste.bfn.de/ogc/wms/schutzgebiet?",
+             group="NP",
+             layers = "Nationalparke",
+             #popupOptions = popupOptions(maxWidth = 600),
+             options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7,info_format = "text/html",tiled = FALSE),
+             attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015") %>%
+      addWMS(baseUrl = "https://geodienste.bfn.de/ogc/wms/schutzgebiet?",
+             group="FFH",
+             layers = "Fauna_Flora_Habitat_Gebiete",
+             #popupOptions = popupOptions(maxWidth = 600),
+             options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7,info_format = "text/html",tiled = FALSE),
+             attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+      addWMS(baseUrl = "https://geodienste.bfn.de/ogc/wms/schutzgebiet?",
+             group="BSR",
+             layers = "Biosphaerenreservate",
+             #popupOptions = popupOptions(maxWidth = 600),
+             options = WMSTileOptions(transparent = TRUE,opacity=0.7,format = "image/png",info_format = "text/html",tiled = FALSE),
+             attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+      addWMS(baseUrl = "https://geodienste.bfn.de/ogc/wms/gliederungen?",
+             group="RGL",
+             layers = "Naturraeume",
+             #popupOptions = popupOptions(maxWidth = 600),
+             options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7,info_format = "text/html",tiled = FALSE),
+             attribution = "Overlaykarten: (c) Bundesamt für Naturschutz (BfN) 2015" ) %>%
+      addWMS(baseUrl = "https://sg.geodatenzentrum.de/wms_vg250-ew?",
+             group="VG250",
+             layers = "vg250_krs",
+             popupOptions = popupOptions(maxWidth = 600),
+             options = WMSTileOptions(format="image/png",transparent=TRUE,opacity=0.7,info_format = "text/html",tiled = FALSE),
+             attribution = "Overlaykarte: (c) Bundesamt für Kartographie und Geodäsie (BKG) 2014" ) %>%
+      addLayersControl(
       baseGroups = c("OSM", "Topo", "ESRI Sat"),
       overlayGroups = c("PNV","NSG","NP","FFH","BSR","RGL","VG250"),
       options = layersControlOptions(collapsed = TRUE)) %>%
