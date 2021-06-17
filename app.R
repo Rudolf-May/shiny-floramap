@@ -154,9 +154,9 @@ server <- function(input, output, session) {
   })
   # retrieve and process data from florkart database (bfn)
   er_Florkart <- eventReactive(input$distMap,{
-    df <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/atlas_json.xsql?suchnr=",input$artWahl,"&grid=quad"),simplifyDataFrame = TRUE)
+    df <- fromJSON(paste0("http://www.floraweb.de/pflanzenarten/atlas_json.xsql?taxonid=",input$artWahl,"&grid=quad"),simplifyDataFrame = TRUE)
 #    updateTextInput(session,inputId = "taxName",value = df$taxname)
-    numPoints <- length(df$records$lat)-1 # json-Ausgabe der records hat immer einen n/a am Ende
+    numPoints <- length(df$records$lat) # json-Ausgabe der records hat immer einen n/a am Ende
     output$atlasrecs <- renderText(paste0("Fertig: ",as.character(numPoints)," Atlas MTB-Quaranten"))
     if (numPoints >= 1){updateCheckboxInput(session,"cb_florkart",value = TRUE)} 
     SpatialPointsDataFrame(cbind(as.double(df$records$lon[1:numPoints]),
